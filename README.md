@@ -1,4 +1,4 @@
-# OFFR Token Smart Contract
+# <img src="coin-con.png" alt="alt text" width="50"> OFFR Token Smart Contract
 This is a Solidity smart contract for the **OFFR Token**. The token **symbol is OFFR**, it has **18 decimals**, and a maximum cap of **1 billion tokens**. The rate for the token is **1 USDC = 1 OFFR token**.
 
 ### Installation
