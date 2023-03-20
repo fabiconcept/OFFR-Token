@@ -36,4 +36,4 @@ The contract also includes some additional functions for managing the token supp
 This contract has been audited for security vulnerabilities and has been deemed safe to use. However, please use caution when working with smart contracts, as unexpected behavior can still occur due to factors outside of the contract's control. Use at your own risk.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/fabiconcept/OFFR-Token/blob/main/LICENSE) file for details.
