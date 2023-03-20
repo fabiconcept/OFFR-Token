@@ -11,14 +11,14 @@ import "./OfferToken.sol";
 interface IUSDC {
     function balanceOf(address account) external view returns (uint256);
 
-    function transfer(address recipient, uint256 amount)external returns (bool);
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
 
-    function transferFrom(address sender, address recipient, uint256 amount
-    ) external returns (bool);
-
-    function transferBatch(
-        address[] memory recipients,
-        uint256[] memory amounts
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
     ) external returns (bool);
 
     function approve(address spender, uint256 amount) external returns (bool);
@@ -40,23 +40,24 @@ contract tokenHandler is AccessControl {
     address internal constant UNISWAP_ROUTER_ADDRESS =
         0x7aa3103351aD2E508b8f91E7422F96b397075B3d;
     IUniswapV2Router02 public _uniswapRouter;
-    address public _usdcToken = 0x152152799265e23BB8B307Ee05D874a221428ee8;
+    address private _usdcToken = 0xD3077255bE7183a690E2E1Af77581DC5303D3D04;
     IUSDC public _usdcInstance;
 
-    bool isDividendPaymentPeriod = false;
-    uint256 public dividendPeriod;
-    uint256 public dividendInterval;
-    uint256 public lastDividendTime;
-    uint256 public dividendCount;
+    bool private isDividendPaymentPeriod = false;
+    uint256 private dividendPeriod;
+    uint256 private dividendInterval;
+    uint256 private lastDividendTime;
+    uint256 private dividendCount;
     mapping(address => uint256) public dividendReceived;
-    uint256 public dividendPercent;
+    uint256 private dividendPercent;
 
     mapping(address => uint256) private withdrawnAmounts;
 
-    uint256 tokenSold = 0;
+    uint256 private tokenSold = 0;
 
-    uint256 public saleEndDate;
-    bool public saleIsActive;
+    string private saleBatchName;
+    uint256 private saleEndDate;
+    bool private saleIsActive;
     bool public fundingReleased = false;
     uint256 public startTimestamp;
 
@@ -67,9 +68,16 @@ contract tokenHandler is AccessControl {
         uint256 amountToken
     );
 
-    event PaymentReceived(address indexed project_owner, uint256 amountUSDC);
+    event FundedContract(address indexed project_owner, uint256 amountUSDC);
     event FundsReleased(address indexed beneficiary, uint256 amountUSDC);
-    event DividendDistributed(uint256 indexed count, uint256 amount);
+    event DividendDistributed(uint256 indexed _count, uint256 _amount);
+    event TokenSaleStarted(uint256 indexed _startDate, uint256 _endDate);
+    event TokenSaleEnded(string indexed _batchName, uint256 _tokenSold);
+    event DividendPaymentPeriodActivated(
+        uint256 indexed _period,
+        uint256 _interval,
+        uint256 _dividendAmount
+    );
 
     constructor(OffrToken _token) {
         admin = payable(msg.sender);
@@ -90,6 +98,10 @@ contract tokenHandler is AccessControl {
 
     function getDividendInterval() public view returns (uint256) {
         return dividendInterval;
+    }
+
+    function isDividendPaymentPeriodActive() public view returns (bool) {
+        return isDividendPaymentPeriod;
     }
 
     function getLastDividendTime() public view returns (uint256) {
@@ -120,7 +132,7 @@ contract tokenHandler is AccessControl {
         return saleIsActive;
     }
 
-    function getAdmin() public view returns (address){
+    function getAdmin() public view returns (address) {
         return admin;
     }
 
@@ -128,52 +140,65 @@ contract tokenHandler is AccessControl {
         return tokenSold;
     }
 
-    function setDividendPeriod(uint256 _period)
-        public
-        onlyAdmin
-        returns (bool success)
-    {
+    function getTokenBatchName() public view returns (string memory) {
+        return saleBatchName;
+    }
+
+    function setDividendProperties(
+        uint256 _period,
+        uint256 _interval,
+        uint256 _value
+    ) public onlyAdmin returns (bool success) {
         require(
-            tokensale_open() == true,
-            "Change the Dividend Period while sales is ended"
+            !isDividendPaymentPeriodActive(),
+            "Owner hasn't initiated Dividend Period yet."
         );
+
+        // dividend Percentage value
+        uint256 dummy = 0;
+        dividendPercent = dummy.add(_value).div(1000);
+        // dividend interval
+        dividendInterval = _interval;
+        // dividend period
         dividendPeriod = _period;
         return true;
     }
 
-    function setDividendInterval(uint256 _interval)
-        public
-        onlyAdmin
-        returns (bool success)
-    {
+    function startDividendPeriod() public onlyAdmin returns (bool success) {
+        require(dividendPercent > 0, "Dividend Percent can not be Zero (0).");
         require(
-            tokensale_open() == true,
-            "Change the Dividend payment period while sales is ended"
+            dividendInterval > 0,
+            "Dividend Intervals can not be Zero (0)."
         );
-        dividendInterval = _interval;
+        require(dividendPeriod > 0, "Dividend Period can not be Zero (0).");
+        require(
+            !tokensale_open(),
+            "Can not start Dividend period during an Active token sale."
+        );
+
+        isDividendPaymentPeriod = true;
+
+        emit DividendPaymentPeriodActivated(
+            getDividendPeriod(),
+            getDividendInterval(),
+            getDividendPercent()
+        );
         return true;
     }
 
-    function setDividendPercent(uint256 _value)
-        public
-        onlyAdmin
-        returns (bool success)
-    {
-        require(tokensale_open() == true, "Sale is Active");
-
-        uint256 dummy = 0;
-        dividendPercent = dummy.add(_value).div(1000);
-        return true;
-    }
-
-    function startSale(uint256 start, uint256 end) public onlyAdmin {
+    function startSale(uint256 start, uint256 end, string memory _batchName) public onlyAdmin {
         require(!saleIsActive, "Sale is already active.");
+        require(
+            !isDividendPaymentPeriodActive(),
+            "Please wait until after dividend period."
+        );
         require(start >= block.timestamp, "Invalid Start Date Input");
         require(end > start, "Invalid End Date Input");
 
         // Set Sales Dates ( saleEndDate - startTimestamp )
         saleEndDate = end;
         startTimestamp = start;
+        saleBatchName = _batchName;
 
         // Reset Previous Data affected buy the Token Sale
         lastDividendTime = block.timestamp;
@@ -181,12 +206,16 @@ contract tokenHandler is AccessControl {
         isDividendPaymentPeriod = false;
         fundingReleased = false;
         saleIsActive = true;
+
+        emit TokenSaleStarted(start, end);
     }
 
     function endSale() public onlyAdmin {
         require(saleIsActive, "Sale has already ended.");
         tokenSold = 0;
         saleIsActive = false;
+
+        emit TokenSaleEnded(getTokenBatchName(), getTokenSold());
     }
 
     function buyTokens(uint256 usdcAmount_) public payable {
@@ -242,34 +271,38 @@ contract tokenHandler is AccessControl {
         /// sales must end before Funds can be released to the _beneficiary
         require(tokensale_open() == false, "Token is still on sale.");
         require(fundingReleased == false, "Usdc has already being released.");
-        
+
         uint256 usdcBalance = _usdcInstance.balanceOf(address(this));
         require(usdcBalance > 0, "You've not sold any tokens yet!");
 
         require(
-            _usdcInstance.transfer(
-                token.getBeneficiary(),
-                token.cap().mul(token.rate())
-            ),
+            _usdcInstance.transfer(token.getBeneficiary(), usdcBalance),
             "sending USDC failed."
         );
         emit FundsReleased(token.getBeneficiary(), token.cap());
         fundingReleased = true;
     }
 
-    function receivePayment(uint256 usdcAmount) public onlyAdmin {
-        require(token.totalSupply() > 0, "total supply");
-        // require();
+    function fundContract(uint256 usdcAmount) public onlyAdmin {
+        require(token.totalSupply() > 0, "No token has been sold or minted.");
+        require(
+            isDividendPaymentPeriodActive(),
+            "Owner hasn't initiated Dividend Period yet."
+        );
         require(
             _usdcInstance.transferFrom(msg.sender, address(this), usdcAmount),
-            "USDC Transfer not possible."
+            "Could not fund contract with USDC."
         );
-        emit PaymentReceived(msg.sender, usdcAmount);
+        emit FundedContract(msg.sender, usdcAmount);
         startTimestamp = block.timestamp;
     }
 
     function distributeDividend() public onlyAdmin returns (bool success) {
         require(!tokensale_open(), "Token sales is still ongoing.");
+        require(
+            isDividendPaymentPeriodActive(),
+            "Owner hasn't initiated Dividend Period yet."
+        );
         require(
             block.timestamp >= lastDividendTime.add(dividendInterval),
             "Not enough time has passed since the last dividend distribution."
@@ -295,10 +328,6 @@ contract tokenHandler is AccessControl {
             );
 
             uint256 totalDividendPaid = 0;
-            uint256[] memory amounts = new uint256[](token.holderListLength());
-            address[] memory recipients = new address[](
-                token.holderListLength()
-            );
 
             for (uint256 i = 0; i < token.holderListLength(); i++) {
                 address[] memory listOfHolders = token.getHolderList();
@@ -306,12 +335,14 @@ contract tokenHandler is AccessControl {
                 uint256 balanceOfHolder = token.balanceOf(holder);
                 uint256 dividendAmount = balanceOfHolder.mul(500).div(10000);
                 if (dividendAmount > 0) {
-                    recipients[i] = holder;
-                    amounts[i] = dividendAmount;
                     dividendReceived[holder] = dividendReceived[holder].add(
                         dividendAmount
                     );
                     totalDividendPaid = totalDividendPaid.add(dividendAmount);
+                    require(
+                        _usdcInstance.transfer(holder, dividendAmount),
+                        "Failed to transfer USDC to holder."
+                    );
                 }
             }
 
@@ -320,7 +351,6 @@ contract tokenHandler is AccessControl {
                 "Contract does not have enough USDC to pay all holders."
             );
 
-            _usdcInstance.transferBatch(recipients, amounts);
             emit DividendDistributed(dividendCount, totalDividend);
         } else {
             uint256 contractUsdcBalance = _usdcInstance.balanceOf(
@@ -347,10 +377,19 @@ contract tokenHandler is AccessControl {
                     dividendReceived[holder] = 0;
                     token.removeHolder(holder);
                     token.burn(holder, balanceOfHolder);
+                    require(
+                        _usdcInstance.transfer(holder, balanceOfHolder),
+                        "Failed to transfer USDC to holder."
+                    );
                 }
             }
 
-            _usdcInstance.transfer(msg.sender, contractUsdcBalance);
+            require(
+                _usdcInstance.transfer(msg.sender, contractUsdcBalance),
+                "Failed to transfer USDC to admin."
+            );
+
+            isDividendPaymentPeriod = false;
         }
 
         lastDividendTime = block.timestamp;
