@@ -68,10 +68,6 @@ contract OffrToken is Context, AccessControl, IERC20 {
         owner = payable(newOwner);
     }
 
-    function closeContract() public onlyOwner {
-        selfdestruct(payable(owner));
-    }
-
     function name() public view returns (string memory) {
         return _name;
     }
@@ -196,21 +192,22 @@ contract OffrToken is Context, AccessControl, IERC20 {
 
         _beforeTokenTransfer(sender, amount);
 
-        _balances[sender] = _balances[sender].sub(
-            amount,
-            "transfer amount exceeds balance"
-        );
+        uint256 senderBalance = _balances[sender];
+        require(senderBalance >= amount, "transfer amount exceeds balance");
+
+        _balances[sender] = senderBalance.sub(amount);
 
         addHolder(recipient);
 
-        if (_balances[sender] == 0) {
+        if (senderBalance == amount) {
             removeHolder(sender);
         }
-        
+
         _balances[recipient] = _balances[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);
     }
+
 
     function removeHolder(address holder) public {
         require(
@@ -246,14 +243,6 @@ contract OffrToken is Context, AccessControl, IERC20 {
 
         _allowances[ownerOfToken][spender] = amount;
         emit Approval(ownerOfToken, spender, amount);
-    }
-
-    function addBalance(address sender, uint256 tokens) public {
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "must have minter role to mint"
-        );
-        _balances[sender] += tokens;
     }
 
     function addHolder(address newHolder) public {
