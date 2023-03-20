@@ -1,5 +1,5 @@
 # OFFR Token Smart Contract
-This is a Solidity smart contract for the OFFR Token. The token symbol is OFFR, it has 18 decimals, and a maximum cap of 1 billion tokens. The rate for the token is 1 USDC = 1 OFFR token.
+This is a Solidity smart contract for the **OFFR Token**. The token **symbol is OFFR**, it has **18 decimals**, and a maximum cap of **1 billion tokens**. The rate for the token is **1 USDC = 1 OFFR token**.
 
 ### Installation
 To use this smart contract, you will need to have the Solidity compiler installed. You can install it using npm (the Node.js package manager):
@@ -20,7 +20,7 @@ The following parameters can be set when deploying the contract:
 - `decimals`: The number of decimals for the OFFR token (18 in this case).
 - `cap`: The maximum supply of the OFFR token (1 billion in this case).
 
-Once the contract is deployed, the following functions can be called:
+### Once the contract is deployed, the following functions can be called:
 
 - `balanceOf(address)`: Returns the token balance of the specified address.
 - `transfer(address, uint256)`: Transfers tokens from the sender's account to the specified address.
