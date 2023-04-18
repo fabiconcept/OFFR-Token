@@ -20,17 +20,43 @@ The following parameters can be set when deploying the contract:
 - `decimals`: The number of decimals for the OFFR token (18 in this case).
 - `cap`: The maximum supply of the OFFR token (1 billion in this case).
 
-### Once the contract is deployed, the following functions can be called:
+Once the contract is deployed, the following functions can be called 
 
+### (Token Contract):
 - `balanceOf(address)`: Returns the token balance of the specified address.
 - `transfer(address, uint256)`: Transfers tokens from the sender's account to the specified address.
 - `transferFrom(address, address, uint256)`: Transfers tokens from one address to another, provided that the sender has been authorized to do so.
 - `approve(address, uint256)`: Allows the specified address to spend the sender's tokens.
 - `allowance(address, address)`: Returns the amount of tokens that the specified address is allowed to spend on behalf of the sender.
-The contract also includes some additional functions for managing the token supply:
 
+The contract also includes some additional functions for managing the token supply:
 - `mint(address, uint256)`: Mints new tokens and adds them to the specified address's balance.
-- `burn(uint256)`: Burns the specified amount of tokens from the sender's account.
+- `burnMyToken(uint256)`: Burns the specified amount of tokens from the sender's account.
+
+### (Token Sale Contract):
+- `getTokenBatchName`: returns token sale current token sale Batch Name.
+- `getTokenSold`: Returns the amount of tokens sold during the active token sale.
+- `tokensale_open`: Returns token sale state (TRUE/FALSE).
+- `getSaleStartDate`: Return the Start date of the current token sale
+- `getSaleEndDate`: Return the End date of the current token sale.
+- `startSale`: To initiate the token sale period of the token, @params start, end, _batchName.
+- `endSale`: To end token sale period.
+- `buyTokens`: To purchase tokens with either ETH or USDC tokens, @params usdcAmount_.
+- `releaseFunds`: To release the funds generate from token sales, only avaliable after token sales.
+
+### (Dividend Management Contract):
+- `getDividendPeriod`: Returns the length of the Dividend Period (e.g 3 months).
+- `getDividendInterval`: Return the Interval of Dividend Period.
+- `isDividendPaymentPeriodActive`: returns the state of the Dividend Period (TRUE/FALSE).
+- `getLastTimeReceived`: Return the timestamp of the last time a stake holder received Divdends, @params account.
+- `getDividendIntervalCount`: Returns the total number of Dividend Payment sessions.
+- `getDividendPercent`: Returns the allocated Dividend percentage for the current Dividend session.
+- `startDividendPaymentPeriod`: Starts a new dividend payment period, allocating a percentage of profits as Dividends, @params _period, _interval, _percent.
+- `endDividendPaymentPeriod`: End the current dividend payment period.
+- `payDividends`: Distributes dividends by funding the dividend Contract with USDC.
+- `claimDividend`: Claim dividends for a given account.
+- `claimableDividendsOf`: Returns the amount of dividend claimable by a given stakeholder, @param _stakeHolder.
+
 
 ## Security Considerations
 This contract has been audited for security vulnerabilities and has been deemed safe to use. However, please use caution when working with smart contracts, as unexpected behavior can still occur due to factors outside of the contract's control. Use at your own risk.
